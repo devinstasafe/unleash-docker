@@ -2,23 +2,24 @@
 'use strict'
 
 /**
- * Unleash server implementation which supports Google Authentication
+ * Unleash server implementation which supports Github Authentication
  * and access control. Only members of the specified domain are
  * allowed to sign up.
  *
  * The implementation assumes the following environment variables:
  * - DATABASE_URL
- * - GOOGLE_CLIENT_ID
- * - GOOGLE_CLIENT_SECRET
- * - GOOGLE_CALLBACK_URL
+ * - GITHUB_CLIENT_ID
+ * - GITHUB_CLIENT_SECRET
+ * - GITHUB_CALLBACK_URL
  * - WHITELISTED_DOMAIN
  */
 
 const fs = require('fs')
 const unleash = require('unleash-server')
 const passport = require('@passport-next/passport')
-const GoogleOAuth2Strategy = require('@passport-next/passport-google-oauth2')
+const GitHubStrategy = require('passport-github')
     .Strategy
+const fetch = require('node-fetch');
 
 const { User, AuthenticationRequired } = unleash
 
@@ -27,20 +28,42 @@ function escapeRegExp(string) {
 }
 
 passport.use(
-    new GoogleOAuth2Strategy(
+    new GitHubStrategy(
         {
-            clientID: process.env.GOOGLE_CLIENT_ID,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-            callbackURL: process.env.GOOGLE_CALLBACK_URL
+            clientID: process.env.GITHUB_CLIENT_ID,
+            clientSecret: process.env.GITHUB_CLIENT_SECRET,
+            callbackURL: process.env.GITHUB_CALLBACK_URL
         },
         (accessToken, refreshToken, profile, done) => {
-            done(
-                null,
-                new User({
-                    name: profile.displayName,
-                    email: profile.emails[0].value
-                })
-            )
+            fetch('https://api.github.com/user/orgs', {
+                method: 'get',
+                headers: { 'Authorization': `Bearer ${accessToken}` },
+            })
+                .then(res => res.json())
+                .then(orgs => {
+                    console.log(orgs)
+                    let isSixgillMember = false;
+
+                    orgs.forEach(org => {
+                        if (org.login === "sixgill") {
+                            isSixgillMember = true;
+                        }
+                    });
+
+                    if (isSixgillMember === false) {
+                        done(
+                            "unauthorized user",
+                            null)
+                    } else {
+                        done(
+                            null,
+                            new User({
+                                name: profile.displayName,
+                                email: `${profile.login}@sixgill.com`
+                            })
+                        )
+                    }
+                });
         }
     )
 )
@@ -53,12 +76,12 @@ function enableGoogleOauth(app) {
     passport.deserializeUser((user, done) => done(null, user))
     app.get(
         '/api/admin/login',
-        passport.authenticate('google', { scope: ['email'] })
+        passport.authenticate('github', { scope: ['read:org'] })
     )
 
     app.get(
         '/api/auth/callback',
-        passport.authenticate('google', {
+        passport.authenticate('github', {
             failureRedirect: '/api/admin/error-login'
         }),
         (req, res) => {
