@@ -125,6 +125,14 @@ function enableGoogleOauth(app) {
                 .end()
         }
     })
+
+    app.use('/api/client', (req, res, next) => {
+        if (req.header('authorization') !== process.env.CLIENT_API_PSK) {
+            res.sendStatus(401);
+        } else {
+            next();
+        }
+    });
 }
 
 const options = {
