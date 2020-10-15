@@ -6,6 +6,8 @@ services:
       - "4242:4242"
     environment:
       DATABASE_URL: postgres://postgres:unleash@db/postgres
+      UNLEASH_MASTER_USERNAME: secretname
+      UNLEASH_MASTER_PASSWORD: secretpass
     depends_on:
       - db
     command: > 
