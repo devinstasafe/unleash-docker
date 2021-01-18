@@ -78,9 +78,14 @@ function basicAuthentication (app) {
 
 async function isTokenValid (req, mytoken) {
   var VARLIDATEAPI
-  if (req.get('host').includes('qa') || req.get('host').includes('dev')) {
+  if (req.get('host').includes('dev')) {
     VARLIDATEAPI =
       'https://dev.instasafe.io/console/auth/signin/users/challenge/token'
+  }
+  
+  if (req.get('host').includes('qa')) {
+    VARLIDATEAPI =
+      'https://qa.instasafe.io/console/auth/signin/users/challenge/token'
   }
 
   if (req.get('host').includes('app')) {
