@@ -10,13 +10,13 @@ services:
       UNLEASH_MASTER_PASSWORD: secretpass
     depends_on:
       - db
-    command: > 
-      sh -c "
-        while ! nc -z db 5432; do
-          echo 'Postgres is unavailable.'
-          sleep 1
-        done
-        npm run start"
+    command: npm run start
+    healthcheck:
+      test: ["CMD", "nc",  "-z", "db", "5432"]
+      interval: 1s
+      timeout: 1m
+      retries: 5
+      start_period: 15s
   db:
     expose:
       - "5432"
@@ -24,3 +24,9 @@ services:
     environment:
       POSTGRES_DB: "db"
       POSTGRES_HOST_AUTH_METHOD: "trust"
+    healthcheck:
+      test: ["CMD", "pg_isready", "--username=postgres", "--host=127.0.0.1", "--port=5432"]
+      interval: 2s
+      timeout: 1m
+      retries: 5
+      start_period: 10s
